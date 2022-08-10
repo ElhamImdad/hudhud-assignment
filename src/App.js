@@ -5,9 +5,8 @@ import {
   useSelection,
   getEdgesByNode,
   removeNode,
-  removeAndUpsertNodes,
+  addNodeAndEdge,
 } from "reaflow";
-import "./App.css";
 
 function App() {
   const _nodes = [
@@ -134,7 +133,7 @@ function App() {
 
   const [nodes, setNodes] = useState(_nodes);
 
-  const { selections, onCanvasClick, onClick } = useSelection({
+  const { selections, onClick } = useSelection({
     nodes,
     edges,
     onDataChange: (n, e) => {
@@ -146,24 +145,56 @@ function App() {
       console.log(n);
     },
   });
-  
-  const allNodesIds =[]
+
+  let newNodes = nodes;
+  let newEdges = edges;
+  const addNodes = (node) => {
+    let allNodesAfterDoubleClicked = getEdgesByNode(_edges, node).from;
+    if (allNodesAfterDoubleClicked) {
+      allNodesAfterDoubleClicked.forEach((value) => {
+        const result = addNodeAndEdge(
+          newNodes,
+          newEdges,
+          {
+            id: value.to,
+            text: `1-${value.to}`,
+          },
+          {
+            id: value.from,
+          }
+        );
+        newNodes = result.nodes;
+        newEdges = result.edges;
+        addNodes({ id: value.to });
+      });
+      setNodes(newNodes);
+      setEdges(newEdges);
+    }
+  };
+
+  const allNodesIds = [];
   const nodeBeenClicked = (node) => {
     try {
       let allNodesAfterTheClickedOne = getEdgesByNode(edges, node).from;
-      allNodesAfterTheClickedOne.map((value) => {
-        allNodesIds.push(value.to)
-        nodeBeenClicked({id:value.to});
-      });
-      const results = removeNode(nodes, edges, allNodesIds);
-      setNodes(results.nodes);
-      setEdges(results.edges);
+      if (allNodesAfterTheClickedOne.length) {
+        allNodesAfterTheClickedOne.map((value) => {
+          allNodesIds.push(value.to);
+          nodeBeenClicked({ id: value.to });
+        });
+        const results = removeNode(nodes, edges, allNodesIds);
+        setNodes(results.nodes);
+        setEdges(results.edges);
+      } else {
+        addNodes(node);
+      }
     } catch (e) {}
   };
 
   return (
-    <div className="App">
+    <div className="">
       <Canvas
+        maxHeight={visualViewport.height}
+        maxWidth={visualViewport.width}
         pannable={true}
         nodes={nodes}
         edges={edges}
